@@ -1753,9 +1753,24 @@ PciParseBar (
   UINT32      OriginalValue;
   UINT32      Mask;
   EFI_STATUS  Status;
+  BOOLEAN     ForceDisableAbove4G;
 
   OriginalValue = 0;
   Value         = 0;
+  ForceDisableAbove4G = FALSE;
+
+  if (PciIoDevice->BusNumber == 0x10) {
+    ForceDisableAbove4G = TRUE;
+  }
+  if (ForceDisableAbove4G) {
+    DEBUG ((
+      DEBUG_INFO,
+      "  Force disable above 4G decoding @ [%02x|%02x|%02x]\n",
+      PciIoDevice->BusNumber,
+      PciIoDevice->DeviceNumber,
+      PciIoDevice->FunctionNumber
+      ));
+  }
 
   Status = BarExisted (
              PciIoDevice,
@@ -1843,8 +1858,30 @@ PciParseBar (
       case 0x04:
         if ((Value & 0x08) != 0) {
           PciIoDevice->PciBar[BarIndex].BarType = PciBarTypePMem64;
+          if (ForceDisableAbove4G) {
+            DEBUG ((
+              DEBUG_INFO,
+              "  64 bit BAR found, but force in 32 bit (PMem32). Offset = %08x @ [%02x|%02x|%02x]\n",
+              PciIoDevice->BusNumber,
+              PciIoDevice->DeviceNumber,
+              PciIoDevice->FunctionNumber,
+              Offset
+              ));
+            PciIoDevice->PciBar[BarIndex].BarType = PciBarTypePMem32;
+          }
         } else {
           PciIoDevice->PciBar[BarIndex].BarType = PciBarTypeMem64;
+          if (ForceDisableAbove4G) {
+            DEBUG ((
+              DEBUG_INFO,
+              "  64 bit BAR found, but force in 32 bit (Mem32). Offset = %08x @ [%02x|%02x|%02x]\n",
+              PciIoDevice->BusNumber,
+              PciIoDevice->DeviceNumber,
+              PciIoDevice->FunctionNumber,
+              Offset
+              ));
+            PciIoDevice->PciBar[BarIndex].BarType = PciBarTypeMem32;
+          }
         }
 
         //
